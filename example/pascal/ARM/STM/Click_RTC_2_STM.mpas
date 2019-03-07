@@ -1,0 +1,158 @@
+{*
+Example for RTC_2 Click
+
+    Date          : Nov 2018.
+    Author        : Nenad Filipovic
+
+Test configuration STM32 :
+
+    MCU              : STM32F107VCT6
+    Dev. Board       : EasyMx PRO v7 for STM32
+    ARM Compiler ver : v6.0.0.0
+
+---
+
+Description :
+
+The application is composed of three sections :
+
+- System Initialization - Initializes GPIO, I2C and LOG structures, set INT pin as input.
+- Application Initialization - Initialization driver enable's - I2C,
+     set start time and date, enable counting and start write log.
+- Application Task - (code snippet) This is a example which demonstrates the use of RTC 2 Click board.
+     RTC 2 Click communicates with register via I2C by write to register and read from register,
+     set time and date, get time and date, enable and disable counting
+     and set frequency by write configuration register.
+     Results are being sent to the Usart Terminal where you can track their changes.
+     All data logs write on usb uart changes for every 1 sec.
+
+Additional Functions :
+
+- void displayDayOfTheWeek( uint8_t dayOfTheWeek ) - Write day of the week log on USART terminal.
+- void displayLogUart( uint8_t value ) - Write the value ( time or date ) of a two-digit number.
+
+*}
+program Click_RTC_2_STM;
+
+uses Click_RTC_2_types, Click_RTC_2_config;
+
+var
+    timeHours : uint8_t; 
+    timeMinutes : uint8_t; 
+    timeSeconds : uint8_t; 
+    dayOfTheWeek : uint8_t; 
+    dateDay : uint8_t; 
+    dateMonth : uint8_t; 
+    dateYear : uint16_t; 
+    timeSecondsNew : uint8_t; 
+    logText : array[50] of char; 
+    
+procedure displayDayOfTheWeek(dayOfTheWeek : uint8_t); 
+begin
+
+    if ((dayOfTheWeek = 1)) then 
+    begin
+        mikrobus_logWrite('      Monday      ', _LOG_LINE); 
+    end; 
+    if ((dayOfTheWeek = 2)) then 
+    begin
+        mikrobus_logWrite('      Tuesday     ', _LOG_LINE); 
+    end; 
+    if ((dayOfTheWeek = 3)) then 
+    begin
+        mikrobus_logWrite('     Wednesday    ', _LOG_LINE); 
+    end; 
+    if ((dayOfTheWeek = 4)) then 
+    begin
+        mikrobus_logWrite('     Thursday     ', _LOG_LINE); 
+    end; 
+    if ((dayOfTheWeek = 5)) then 
+    begin
+        mikrobus_logWrite('      Friday      ', _LOG_LINE); 
+    end; 
+    if ((dayOfTheWeek = 6)) then 
+    begin
+        mikrobus_logWrite('     Saturday     ', _LOG_LINE); 
+    end; 
+    if ((dayOfTheWeek = 7)) then 
+    begin
+        mikrobus_logWrite('      Sunday      ', _LOG_LINE); 
+    end; 
+
+end;
+
+procedure displayLogUart(value : uint8_t); 
+begin
+
+    IntToStr((value / 10), logText); 
+    ltrim(logText); 
+    mikrobus_logWrite(logText, _LOG_TEXT); 
+    IntToStr((value mod 10), logText); 
+    ltrim(logText); 
+    mikrobus_logWrite(logText, _LOG_TEXT); 
+
+end;
+
+procedure systemInit(); 
+begin
+
+    mikrobus_gpioInit(_MIKROBUS1, _MIKROBUS_INT_PIN, _GPIO_INPUT); 
+    mikrobus_i2cInit(_MIKROBUS1, @_RTC2_I2C_CFG[0]); 
+    mikrobus_logInit(_LOG_USBUART_A, 9600); 
+    Delay_100ms(); 
+
+end;
+
+procedure applicationInit(); 
+begin
+
+    rtc2_i2cDriverInit(T_RTC2_P(@_MIKROBUS1_GPIO), T_RTC2_P(@_MIKROBUS1_I2C), _RTC2_I2C_ADDRESS); 
+    mikrobus_logWrite('-------------------', _LOG_LINE); 
+    mikrobus_logWrite('    RTC 2 Click    ', _LOG_LINE); 
+    mikrobus_logWrite('-------------------', _LOG_LINE); 
+    rtc2_setTime(23, 59, 50); 
+    rtc2_setDate(1, 31, 12, 2018); 
+    rtc2_enableCounting(); 
+
+end;
+
+procedure applicationTask(); 
+begin
+
+    rtc2_getTime(@timeHours, @timeMinutes, @timeSeconds); 
+    rtc2_getDate(@dayOfTheWeek, @dateDay, @dateMonth, @dateYear); 
+    if ((timeSecondsNew <> timeSeconds)) then 
+    begin
+        mikrobus_logWrite(' Time : ', _LOG_TEXT); 
+        displayLogUart(timeHours); 
+        mikrobus_logWrite(':', _LOG_TEXT); 
+        displayLogUart(timeMinutes); 
+        mikrobus_logWrite(':', _LOG_TEXT); 
+        displayLogUart(timeSeconds); 
+        mikrobus_logWrite('', _LOG_LINE); 
+        displayDayOfTheWeek(dayOfTheWeek); 
+        mikrobus_logWrite(' Date: ', _LOG_TEXT); 
+        displayLogUart(dateDay); 
+        mikrobus_logWrite('.', _LOG_TEXT); 
+        displayLogUart(dateMonth); 
+        mikrobus_logWrite('.', _LOG_TEXT); 
+        mikrobus_logWrite('20', _LOG_TEXT); 
+        displayLogUart(dateYear); 
+        mikrobus_logWrite('.', _LOG_LINE); 
+        mikrobus_logWrite('-------------------', _LOG_LINE); 
+        timeSecondsNew := timeSeconds; 
+    end; 
+
+end;
+
+begin
+    timeSecondsNew := 0;
+
+    systemInit(); 
+    applicationInit(); 
+    while (1) do 
+    begin 
+        applicationTask(); 
+    end;
+
+end.
